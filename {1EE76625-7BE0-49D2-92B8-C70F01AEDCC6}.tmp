@@ -1,0 +1,191 @@
+#adding the ipkiss PDK location to sys.path
+import sys
+sys.path.append('D:/GitRepository/asp_sin_lnoi_photonics/ipkiss') # Change this to the location of the PDK
+sys.path.append('C:/luceda/asp_sin_lnoi_photonics-master/ipkiss')
+sys.path.append("H:/GitHub/asp_sin_lnoi_photonics/ipkiss")
+sys.path.append("D:/RMITRaceHubDataHiepDX/asp_sin_lnoi_photonics/ipkiss")
+# import the technology settings and ipkiss
+import asp_sin_lnoi_photonics.technology
+import ipkiss3.all as i3
+import asp_sin_lnoi_photonics.all as asp_LNOI
+import numpy as np
+import matplotlib.pyplot as plt
+
+from ipkiss3.pcell.wiring import ElectricalWire
+
+# Defining the unit cell of bragg grating
+
+from asp_sin_lnoi_photonics.all import RWG1000, SiNRibWaveguideTemplate
+from ipkiss3.pcell.photonics.waveguide import Waveguide
+
+wg1_tmpl = SiNRibWaveguideTemplate()
+wg1 = Waveguide(trace_template=wg1_tmpl)
+
+wg2_tmpl = SiNRibWaveguideTemplate()
+wg2 = Waveguide(trace_template=wg2_tmpl)
+
+
+class UnitCell(i3.PCell):
+    waveguide_1 = i3.ChildCellProperty(doc='template for waveguide')
+    waveguide_2 = i3.ChildCellProperty(doc='template for waveguide')
+
+    class Layout(i3.LayoutView):
+        width_1 = i3.PositiveNumberProperty(default=0.90, doc="width of first waveguide")
+        width_2 = i3.PositiveNumberProperty(default=1.10, doc="width of second waveguide")
+        waveguide_length1 = i3.PositiveNumberProperty(default=0.213, doc="length of waveguide1")
+        waveguide_length2 = i3.PositiveNumberProperty(default=0.212, doc="length of waveguide2")
+
+        UnitCell_length = i3.PositiveNumberProperty(doc="length of UnitCell")
+
+        def _generate_instances(self, insts):
+            shape_1 = [(-self.waveguide_length1, 0.0), (0, 0)]
+            wg1_tmpl_lo = wg1_tmpl.Layout(core_width=self.width_1)
+            wg1.Layout(shape=shape_1)
+            insts += i3.SRef(wg1, position=(0, 0))
+
+            shape_2 = [(0, 0), (self.waveguide_length2, 0)]
+            wg2_tmpl_lo = wg2_tmpl.Layout(core_width=self.width_2)
+            wg2.Layout(shape=shape_2)
+            insts += i3.SRef(wg2, position=(0, 0))
+            return insts
+
+        def _default_UnitCell_length(self):
+            return self.waveguide_length1 + self.waveguide_length2
+
+        def _generate_ports(self, ports):
+            ports += i3.OpticalPort(name="in", position=(0.0, 0.0), angle=180.0)
+            ports += i3.OpticalPort(name="out", position=(self.UnitCell_length, 0.0), angle=0.0)
+            return ports
+
+
+my_UnitCell = UnitCell(waveguide_1=wg1, waveguide_2=wg2)
+my_UnitCell_lo4 = my_UnitCell.Layout()
+
+heater_tmpl = asp_LNOI.HeaterWireTemplate()
+heater_tmpl_layout = heater_tmpl.Layout(width=20)
+
+wire_tmpl = asp_LNOI.MetalWireTemplate()
+
+
+class Heaternew(i3.PCell):
+    tasneem_wire_heater = i3.ChildCellProperty(doc="the heater wire")
+
+    def _default_tasneem_wire_heater(self):
+        return ElectricalWire(trace_template=heater_tmpl)
+
+    class Layout(i3.LayoutView):
+        heater_position = i3.Coord2Property(default=(-1000, -2000),
+                                            doc="the position of the heater with respect to the gc.")
+        heater_length = i3.PositiveNumberProperty(default=538, doc="spacing between two pad heaters")
+
+        def _default_tasneem_wire_heater(self):
+            tasneem_wire_heater_layout = self.cell.tasneem_wire_heater.get_default_view(i3.LayoutView)
+            heater_shape = i3.Shape(points=[(0, 0), (self.heater_length, 0)])
+            tasneem_wire_heater_layout.set(shape=heater_shape)
+            return tasneem_wire_heater_layout
+
+        def _generate_instances(self, insts):
+            insts += i3.SRef(name='heater', reference=self.tasneem_wire_heater, position=(0, 0))
+
+            return insts
+
+    class Netlist(i3.NetlistFromLayout):
+        pass
+
+
+myheater = Heaternew()
+myheater_lo = myheater.Layout()
+
+
+
+class BraggGrating(i3.PCell):
+    my_UnitCell_lo4 = i3.ChildCellProperty(doc='the UnitCell is the child cell')
+
+    class Layout(i3.LayoutView):
+        Grating_length = i3.PositiveNumberProperty(doc='Total length of the Bragg Grating')
+        period_number = i3.PositiveIntProperty(default=1200, doc='the number of times the unit cell repeats')
+
+        def _default_Grating_length(self):
+            return my_UnitCell_lo4.UnitCell_length * self.period_number
+
+        def _generate_instances(self, insts):
+            insts += i3.ARef(reference=self.my_UnitCell_lo4, origin=(0, 0), period=(my_UnitCell_lo4.UnitCell_length, 0),
+                             n_o_periods=(self.period_number, 1))
+
+            return insts
+
+        def _generate_ports(self, ports):
+            ports += i3.OpticalPort(name="in", position=(0.0, 0.0), angle=180.0)
+            ports += i3.OpticalPort(name="out", position=(self.Grating_length, 0.0), angle=0.0)
+            return ports
+
+
+
+    class Netlist(i3.NetlistFromLayout):
+        def _generate_netlist(self, netlist):
+            netlist.terms = i3.extract_terms(self.layout_view)
+            return netlist
+
+
+my_BraggGrating = BraggGrating(my_UnitCell_lo4=my_UnitCell_lo4)
+my_BraggGrating_lo = my_BraggGrating.Layout()
+print (my_BraggGrating_lo.Grating_length)
+
+
+class BraggGratingnew(i3.PCell):
+    BraggGrating = i3.ChildCellProperty(doc='the UnitCell is the child cell')
+    heater = i3.ChildCellProperty(doc='heater')
+
+    def _default_BraggGrating(self):
+        return BraggGrating(my_UnitCell_lo4=my_UnitCell_lo4)
+
+    def _default_heater(self):
+        return Heaternew()
+
+    class Layout(i3.LayoutView):
+
+        def _default_BraggGrating(self):
+            Bragg_grating_lo = self.cell.BraggGrating.get_default_view(i3.LayoutView)
+            return Bragg_grating_lo
+
+        def _default_heater(self):
+            heater_layout = self.cell.heater.get_default_view(i3.LayoutView)
+            return heater_layout
+
+        def _generate_instances(self, insts):
+            insts += i3.SRef(name='brag_grating', reference=self.BraggGrating, position=(0.213, 0))
+            insts += i3.SRef(name='heater', reference=self.heater, position=(-14, 0))
+            return insts
+
+        def _generate_ports(self, ports):
+            ports += i3.OpticalPort(name="in", position=(0.0, 0.0), angle=180.0)
+            ports += i3.OpticalPort(name="out", position=(510, 0.0), angle=0.0)
+            return ports
+
+    class Netlist(i3.NetlistFromLayout):
+        def _generate_netlist(self, netlist):
+            netlist.terms = i3.extract_terms(self.layout_view)
+            return netlist
+
+
+my_BraggGrating_4 = BraggGratingnew()
+my_BraggGrating_4_lo = my_BraggGrating_4.Layout()
+
+
+from picazzo3.routing.place_route import PlaceAndAutoRoute
+
+gc_wire = asp_LNOI.GRATING_COUPLER_TE1550_RIBZ()
+
+BraggGrating_circuit_4 = PlaceAndAutoRoute(name="BraggGrating_circuit",
+                                           child_cells={"in_grating": gc_wire,
+                                                        "out_grating": gc_wire,
+                                                        "BraggGrating": my_BraggGrating_4},
+                                           links=[("in_grating:out", "BraggGrating:in"),
+                                                  ("BraggGrating:out", "out_grating:out")])
+
+BraggGrating_circuit_4_layout_period = BraggGrating_circuit_4.Layout(
+    child_transformations={"in_grating": i3.Rotation(rotation=0) + i3.Translation((0, 0.0)),
+                           "BraggGrating": i3.Rotation(rotation=0) + i3.Translation((100, 0)),
+                           "out_grating": i3.Rotation(rotation=180) + i3.Translation((700, 0))})
+
+# BraggGrating_circuit_4_layout.write_gdsii("circuit4.gds")
