@@ -4,7 +4,7 @@ import sys
 # Need to update the folder that contains asp_sin_lnoi_photonics/ipkiss
 
 
-# sys.path.append("C:/pdk/asp_sin_lnoi_photonics/ipkiss")
+sys.path.append("C:/pdk/asp_sin_lnoi_photonics/ipkiss")
 # sys.path.append("H:/GitHub/asp_sin_lnoi_photonics/ipkiss")
 # sys.path.append("D:/RMITRaceHubDataHiepDX/PDKs/asp_sin_lnoi_photonics/ipkiss")
 sys.path.append("C:/Users/Administrator/Documents/GitHub/asp_sin_lnoi_photonics/ipkiss")
@@ -13,17 +13,17 @@ import asp_sin_lnoi_photonics.all as asp
 import ipkiss3.all as i3
 import numpy as np
 
-from ring_gc.cell import NotchRingGC
+# from ring_gc.cell import NotchRingGC
 from ring_gc_h_with_auxiliary_ring_outside.cell import RingModulatorGCHiepAuxOutside
 from ring_gc_h_with_auxiliary_ring_outside_19GHz.cell import RingModulatorGCHiepAuxOutside2, RingModulatorGCHiepAuxOutside3
 from ring_gc_h_with_auxiliary_ring_outside_2.cell import RingModulatorGCHiepAuxOutside_Top, RingModulatorGCHiepAuxOutside_Top_2
 from ring_gc_h_with_auxiliary_ring_outside_19GHz_2.cell import RingModulatorGCHiepAuxOutside2_Top
-from ring_modulator.cell import AddDropRingWithElectrode
+# from ring_modulator.cell import AddDropRingWithElectrode
 
 from ring_modulator_with_auxiliary_ring_outside.cell import AddDropRingWithAuxOutside_Euler
 from waveguide_loop.cell import WaveguideLoop
 
-
+#
 from ring_modulator import AddDropRingWithElectrode
 from ring_gc import RingModulatorGC
 

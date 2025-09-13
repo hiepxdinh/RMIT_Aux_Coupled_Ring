@@ -251,7 +251,7 @@ class AddDropRingWithElectrode(i3.PCell):
                                  taper_straight_length=self.taper_straight_length
                                  )
             return electrode_layout
-        
+
         def _generate_instances(self, insts):
             ring_wg_width = self.ring_trace_template.core_width
             bus_wg_width = self.bus_trace_template.core_width
@@ -489,7 +489,7 @@ class AddDropRingWithOutElectrode(i3.PCell):
                              position=(self.coupler_positions[1],
                                        -172.575 - ring_wg_width * 0.5 - bus_wg_width * 0.5 - self.coupler_spacing)
                              )
-            
+
             return insts
 
         def _generate_ports(self, ports):
